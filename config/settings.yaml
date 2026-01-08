@@ -1,0 +1,288 @@
+# RAG Pipeline Configuration
+
+# API Keys (Set via environment variables)
+openai_api_key: ${OPENAI_API_KEY}
+cohere_api_key: ${COHERE_API_KEY}
+pinecone_api_key: ${PINECONE_API_KEY}
+weaviate_api_key: ${WEAVIATE_API_KEY}
+
+# Document Processing
+document_processing:
+  supported_formats: ["pdf", "docx", "txt", "html"]
+  max_file_size_mb: 100
+  ocr_enabled: true
+  image_extraction: true
+  table_extraction: true
+
+# Chunking Strategy
+chunking:
+  strategy: "adaptive"  # adaptive, semantic, hierarchical, table_aware
+  max_chunk_size: 1024  # tokens
+  chunk_overlap: 200    # tokens
+  preserve_structure: true
+  
+  # Semantic chunking settings
+  semantic:
+    threshold_type: "percentile"
+    threshold_amount: 95
+    embedding_model: "text-embedding-3-large"
+  
+  # Hierarchical chunking settings
+  hierarchical:
+    preserve_headers: true
+    create_parent_child: true
+    max_section_size: 2048
+
+# Embeddings Configuration
+embeddings:
+  # Primary embedding strategy
+  primary:
+    provider: "openai"
+    model: "text-embedding-3-large"
+    dimensions: 3072  # Can be reduced to 1536 for cost savings
+    
+  # Secondary embedding for ensemble
+  secondary:
+    provider: "cohere"
+    model: "embed-english-v3.0"
+    dimensions: 1024
+    
+  # Multi-modal settings
+  multimodal:
+    text_model: "text-embedding-3-large"
+    image_model: "clip-ViT-B-32"
+    combine_strategy: "concatenate"  # concatenate, average, weighted
+
+# Vector Database
+vector_db:
+  provider: "pinecone"  # pinecone, weaviate, qdrant
+  
+  # Pinecone configuration
+  pinecone:
+    environment: "us-west1-gcp"
+    index_name: "finance-docs"
+    metric: "cosine"
+    pod_type: "p1.x1"
+    replicas: 1
+    
+  # Weaviate configuration
+  weaviate:
+    url: "https://your-cluster.weaviate.network"
+    class_name: "FinanceDocument"
+    
+  # Qdrant configuration
+  qdrant:
+    host: "localhost"
+    port: 6333
+    collection_name: "finance_docs"
+
+# Query Processing
+query_processing:
+  rewriting:
+    enabled: true
+    strategy: "adaptive"  # adaptive, financial, conversational
+    llm_enhancement: true
+    max_variants: 10
+    
+  intent_classification:
+    enabled: true
+    confidence_threshold: 0.7
+    
+  entity_extraction:
+    enabled: true
+    financial_terms: true
+    numerical_values: true
+    time_references: true
+
+# Retrieval Configuration
+retrieval:
+  # Hybrid search settings
+  hybrid_search:
+    enabled: true
+    dense_weight: 0.7
+    sparse_weight: 0.3
+    
+  # Retrieval parameters
+  top_k_initial: 50      # Initial retrieval before reranking
+  top_k_final: 10        # Final results after reranking
+  
+  # Metadata filtering
+  metadata_filtering:
+    enabled: true
+    filter_fields: ["document_type", "section", "date_range"]
+    
+  # Multi-vector retrieval
+  multi_vector:
+    enabled: true
+    text_weight: 0.6
+    table_weight: 0.3
+    image_weight: 0.1
+
+# Re-ranking Configuration
+reranking:
+  enabled: true
+  strategy: "hybrid"  # cohere, cross_encoder, llm, hybrid
+  
+  # Hybrid reranking weights
+  hybrid_weights:
+    cohere: 0.5
+    cross_encoder: 0.3
+    financial_context: 0.2
+    
+  # Model configurations
+  models:
+    cohere:
+      model: "rerank-english-v3.0"
+      max_documents: 100
+      
+    cross_encoder:
+      model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      
+    llm:
+      model: "gpt-3.5-turbo"
+      temperature: 0.1
+
+# LLM Configuration
+llm:
+  # Primary LLM for generation
+  primary:
+    provider: "openai"
+    model: "gpt-4-turbo"
+    temperature: 0.1
+    max_tokens: 2048
+    
+  # Alternative models
+  alternatives:
+    - provider: "anthropic"
+      model: "claude-3-sonnet"
+      temperature: 0.1
+      max_tokens: 2048
+      
+    - provider: "openai"
+      model: "gpt-4o"
+      temperature: 0.1
+      max_tokens: 2048
+      
+  # Prompt configuration
+  prompts:
+    system_prompt: |
+      You are a financial document expert. Answer questions based only on the provided documents.
+      Always include specific page numbers and section references.
+      Explain financial terms when first mentioned.
+      Show calculations step-by-step when needed.
+      
+    context_window: 8000
+    max_context_chunks: 10
+
+# Response Generation
+response:
+  # Reference tracking
+  references:
+    include_page_numbers: true
+    include_sections: true
+    include_document_names: true
+    reference_format: "[Page {page}, Section {section}]"
+    
+  # Output formatting
+  formatting:
+    include_calculations: true
+    show_confidence_scores: false
+    include_source_snippets: true
+    max_response_length: 1500
+    
+  # Answer validation
+  validation:
+    check_factual_accuracy: true
+    verify_calculations: true
+    check_reference_validity: true
+
+# Evaluation Configuration
+evaluation:
+  # Automatic evaluation
+  auto_eval:
+    enabled: true
+    frequency: "daily"  # daily, weekly, per_batch
+    
+  # Metrics to compute
+  metrics:
+    retrieval: ["mrr", "recall@10", "precision@10", "ndcg@10"]
+    generation: ["bleu", "rouge", "bert_score", "factual_accuracy"]
+    domain: ["concept_coverage", "numerical_accuracy"]
+    
+  # Evaluation datasets
+  test_sets:
+    - name: "finance_qa_100"
+      path: "data/test/finance_qa_100.json"
+      
+    - name: "earnings_calls_50" 
+      path: "data/test/earnings_calls_50.json"
+
+# Monitoring and Logging
+monitoring:
+  # Performance tracking
+  latency_tracking: true
+  throughput_tracking: true
+  error_tracking: true
+  
+  # Logging configuration
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_format: "structured"  # structured, plain
+  
+  # Metrics collection
+  metrics:
+    prometheus_enabled: true
+    prometheus_port: 9090
+    
+  # Health checks
+  health_checks:
+    enabled: true
+    interval_seconds: 30
+    
+# Production Settings
+production:
+  # Scaling configuration
+  auto_scaling: true
+  min_replicas: 2
+  max_replicas: 10
+  cpu_threshold: 70
+  memory_threshold: 80
+  
+  # Rate limiting
+  rate_limiting:
+    requests_per_minute: 100
+    burst_size: 20
+    
+  # Caching
+  caching:
+    enabled: true
+    ttl_seconds: 3600
+    max_cache_size: "1GB"
+    
+  # Security
+  security:
+    api_key_required: true
+    cors_enabled: true
+    rate_limiting: true
+    input_validation: true
+
+# Development Settings
+development:
+  debug_mode: true
+  hot_reload: true
+  detailed_logging: true
+  test_data_path: "data/test/"
+  
+# Cost Optimization
+cost_optimization:
+  # Embedding cost management
+  embedding_caching: true
+  batch_processing: true
+  
+  # LLM cost management
+  response_caching: true
+  context_compression: true
+  model_routing: true  # Use cheaper models when appropriate
+  
+  # Vector DB optimization
+  index_optimization: true
+  query_optimization: true
